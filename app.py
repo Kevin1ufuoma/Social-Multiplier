@@ -96,6 +96,7 @@ with col2:
                                 {"role": "user", "content": seed_text}
                             ],
                             model="qwen/qwen3.8-27b",
+                            max_tokens=500
                         )
                         # FIX: Added [0] to grab the first choice element out of the list container
                         return response.choices[0].message.content
