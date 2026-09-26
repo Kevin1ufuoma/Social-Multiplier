@@ -3,7 +3,6 @@ import os
 from groq import Groq
 from supabase import create_client
 from dotenv import load_dotenv
-import pandas as pd
 
 # 1. INITIALIZE & SECURE KEYS
 load_dotenv()
@@ -89,7 +88,7 @@ with col2:
                             model="qwen/qwen3.8-27b",
                             max_tokens=500
                         )
-                        return response.choices[0].message.content
+                        return response.choices.message.content
 
                     # --- GENERATE LINKEDIN ---
                     if use_linkedin:
@@ -99,8 +98,8 @@ with col2:
                                 "Use clean paragraph line breaks, an engaging professional hook, bullet points, and 2-3 hashtags."
                             )
                             saved_outputs["linkedin"] = generate_post(linkedin_prompt)
-                            st.success("LinkedIn Variant Ready!")
-                            st.write(saved_outputs["linkedin"])
+                            st.success("LinkedIn Variant Ready! (Click the top right icon to copy)")
+                            st.code(saved_outputs["linkedin"], language="markdown")
                         tab_index += 1
 
                     # --- GENERATE X / TWITTER ---
@@ -112,8 +111,8 @@ with col2:
                                 "Keep each numbered statement concise, bold, and under 280 characters. No hashtags."
                             )
                             saved_outputs["twitter"] = generate_post(twitter_prompt)
-                            st.success("X Thread Variant Ready!")
-                            st.write(saved_outputs["twitter"])
+                            st.success("X Thread Variant Ready! (Click the top right icon to copy)")
+                            st.code(saved_outputs["twitter"], language="markdown")
                         tab_index += 1
 
                     # --- GENERATE THREADS ---
@@ -125,8 +124,8 @@ with col2:
                                 "End with an open-ended question to spark replies."
                             )
                             saved_outputs["threads"] = generate_post(threads_prompt)
-                            st.success("Threads Variant Ready!")
-                            st.write(saved_outputs["threads"])
+                            st.success("Threads Variant Ready! (Click the top right icon to copy)")
+                            st.code(saved_outputs["threads"], language="markdown")
                     
                     # --- SAVE DATA TO SUPABASE ---
                     data_to_insert = {
@@ -137,7 +136,7 @@ with col2:
                     }
                     
                     supabase_client.table("content_history").insert(data_to_insert).execute()
-                    st.info("💾 Content logged successfully to Supabase history!")
+                    st.toast("💾 Synced to database history log successfully!")
                             
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
@@ -151,27 +150,39 @@ st.header("📁 Multiplied Content History Log")
 if config["SUPABASE_URL"] and config["SUPABASE_KEY"]:
     try:
         sb_viewer = create_client(config["SUPABASE_URL"], config["SUPABASE_KEY"])
-        db_response = sb_viewer.table("content_history").select("*").order("created_at", ascending=False).execute()
+        
+        db_response = sb_viewer.table("content_history").select("*").order("created_at", desc=True).execute()
         records = db_response.data
         
         if records:
-            # Display each history record as clean interactive cards
             for item in records:
-                # Format timestamp safely
                 date_str = item.get("created_at", "").split("T")[0] if "created_at" in item else "Recent"
+                snippet = item.get("seed_text", "")[:50].replace("\n", " ")
                 
-                with st.expander(f"📅 Log Entry: {date_str} - Raw Input Snippet: \"{item.get('seed_text', '')[:40]}...\""):
-                    st.markdown("**Original Input Content:**")
+                with st.expander(f"📅 {date_str} — Raw Snippet: \"{snippet}...\""):
+                    st.markdown("**Original Seed Text:**")
                     st.caption(item.get("seed_text"))
                     st.write("---")
                     
                     hist_tabs = st.tabs(["💼 LinkedIn", "🐦 X / Twitter", "🧵 Threads"])
+                    
                     with hist_tabs[0]:
-                        st.write(item.get("linkedin_output") or "*Not generated for this platform*")
+                        if item.get("linkedin_output"):
+                            st.code(item.get("linkedin_output"), language="markdown")
+                        else:
+                            st.caption("*Not generated for this platform*")
+                            
                     with hist_tabs[1]:
-                        st.write(item.get("twitter_output") or "*Not generated for this platform*")
+                        if item.get("twitter_output"):
+                            st.code(item.get("twitter_output"), language="markdown")
+                        else:
+                            st.caption("*Not generated for this platform*")
+                            
                     with hist_tabs[2]:
-                        st.write(item.get("threads_output") or "*Not generated for this platform*")
+                        if item.get("threads_output"):
+                            st.code(item.get("threads_output"), language="markdown")
+                        else:
+                            st.caption("*Not generated for this platform*")
         else:
             st.info("No content generation logs found in database history yet. Start multiplying above!")
             
