@@ -88,7 +88,7 @@ with col2:
                             model="qwen/qwen3.8-27b",
                             max_tokens=500
                         )
-                        return response.choices.message.content
+                        return response.choices[0].message.content
 
                     # --- GENERATE LINKEDIN ---
                     if use_linkedin:
