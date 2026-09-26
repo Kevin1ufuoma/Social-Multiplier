@@ -148,37 +148,32 @@ with col2:
 st.write("---")
 st.header("📁 Multiplied Content History Log")
 
-# Only try fetching data if database keys are present
 if config["SUPABASE_URL"] and config["SUPABASE_KEY"]:
     try:
-        # Initialize an isolated client to fetch past rows safely
         sb_viewer = create_client(config["SUPABASE_URL"], config["SUPABASE_KEY"])
-        
-        # Pull records ordered by newest first
         db_response = sb_viewer.table("content_history").select("*").order("created_at", ascending=False).execute()
         records = db_response.data
         
         if records:
-            # Turn the data into a readable pandas table frame
-            df = pd.DataFrame(records)
-            
-            # Clean up columns for presentation
-            df = df.rename(columns={
-                "created_at": "Date Multiplied",
-                "seed_text": "Original Text Input",
-                "linkedin_output": "LinkedIn Post",
-                "twitter_output": "X Thread",
-                "threads_output": "Threads Post"
-            })
-            
-            # Display it as an interactive spreadsheet layout
-            st.dataframe(
-                df[["Date Multiplied", "Original Text Input", "LinkedIn Post", "X Thread", "Threads Post"]],
-                use_container_width=True,
-                hide_index=True
-            )
+            # Display each history record as clean interactive cards
+            for item in records:
+                # Format timestamp safely
+                date_str = item.get("created_at", "").split("T")[0] if "created_at" in item else "Recent"
+                
+                with st.expander(f"📅 Log Entry: {date_str} - Raw Input Snippet: \"{item.get('seed_text', '')[:40]}...\""):
+                    st.markdown("**Original Input Content:**")
+                    st.caption(item.get("seed_text"))
+                    st.write("---")
+                    
+                    hist_tabs = st.tabs(["💼 LinkedIn", "🐦 X / Twitter", "🧵 Threads"])
+                    with hist_tabs[0]:
+                        st.write(item.get("linkedin_output") or "*Not generated for this platform*")
+                    with hist_tabs[1]:
+                        st.write(item.get("twitter_output") or "*Not generated for this platform*")
+                    with hist_tabs[2]:
+                        st.write(item.get("threads_output") or "*Not generated for this platform*")
         else:
             st.info("No content generation logs found in database history yet. Start multiplying above!")
             
     except Exception as db_err:
-        st.caption(f"Note: History log viewer ready. (Awaiting database content synchronization: {db_err})")
+        st.caption(f"Awaiting database data synchronization... Click 'Multiply Content' to trigger a sync refresh! (Log: {db_err})")
